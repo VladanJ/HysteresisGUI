@@ -118,8 +118,14 @@ if (~isempty(msg))
     error('MATLAB:splash:inputParsing', '%s', msg);
 end
 
+isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
+
 if (~isempty(handle))
-    handle.dispose;
+    if isOctave || ishghandle(handle)
+        close(handle);
+    else
+        handle.dispose;
+    end
     return;
 end
 
@@ -134,25 +140,44 @@ catch
     err = lasterror;
     error('MATLAB:splash:imread','%s',err.message);
 end
-%% Create splash screen
-splashImage = im2java(I);
-win = javax.swing.JWindow;
-icon = javax.swing.ImageIcon(splashImage);
-label = javax.swing.JLabel(icon);
-win.getContentPane.add(label);
-win.setAlwaysOnTop(true);
-win.pack;
 
-%% set the splash image to the center of the screen
-screenSize = win.getToolkit.getScreenSize;
-screenHeight = screenSize.height;
-screenWidth = screenSize.width;
-% get the actual splashImage size
-imgHeight = icon.getIconHeight;
-imgWidth = icon.getIconWidth;
-win.setLocation((screenWidth-imgWidth)/2,(screenHeight-imgHeight)/2);
+if isOctave
+    %% Octave lacks im2java/javax.swing; use a plain figure with core image()
+    imgSize = size(I);
+    imgWidth = imgSize(2);
+    imgHeight = imgSize(1);
+    screenSize = get(0,'ScreenSize');
+    screenWidth = screenSize(3);
+    screenHeight = screenSize(4);
+    win = figure('MenuBar','none','ToolBar','none','NumberTitle','off', ...
+        'Name','','Resize','off','Units','pixels', ...
+        'Position',[(screenWidth-imgWidth)/2, (screenHeight-imgHeight)/2, imgWidth, imgHeight]);
+    ax = axes('Parent',win,'Position',[0 0 1 1]);
+    image(I,'Parent',ax);
+    set(ax,'YDir','reverse','Visible','off');
+    axis(ax,'image');
+    drawnow;
+else
+    %% Create splash screen
+    splashImage = im2java(I);
+    win = javax.swing.JWindow;
+    icon = javax.swing.ImageIcon(splashImage);
+    label = javax.swing.JLabel(icon);
+    win.getContentPane.add(label);
+    win.setAlwaysOnTop(true);
+    win.pack;
 
-win.show % show the splash screen
+    %% set the splash image to the center of the screen
+    screenSize = win.getToolkit.getScreenSize;
+    screenHeight = screenSize.height;
+    screenWidth = screenSize.width;
+    % get the actual splashImage size
+    imgHeight = icon.getIconHeight;
+    imgWidth = icon.getIconWidth;
+    win.setLocation((screenWidth-imgWidth)/2,(screenHeight-imgHeight)/2);
+
+    win.show % show the splash screen
+end
 
 %% Output the handle
 if (nargout==1)
@@ -196,7 +221,7 @@ switch(nargin)
         elseif ischar(in1) && isnumeric(in2)
             filename = in1;
             time = in2;
-        elseif isjava(in1) && isequal(in2,'off')
+        elseif (isjava(in1) || ishghandle(in1)) && isequal(in2,'off')
             handle = in1;
         else
             msg='Input type mismatch. Help splash for more information';

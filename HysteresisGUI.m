@@ -25,23 +25,121 @@ function varargout = HysteresisGUI(varargin)
 % Last Modified by GUIDE v2.5 03-Sep-2014 15:24:50
 
 % Begin initialization code - DO NOT EDIT
-    gui_Singleton = 1;
-    gui_State = struct('gui_Name',       mfilename, ...
-                       'gui_Singleton',  gui_Singleton, ...
-                       'gui_OpeningFcn', @HysteresisGUI_OpeningFcn, ...
-                       'gui_OutputFcn',  @HysteresisGUI_OutputFcn, ...
-                       'gui_LayoutFcn',  [] , ...
-                       'gui_Callback',   []);
-    if nargin && ischar(varargin{1})
-        gui_State.gui_Callback = str2func(varargin{1});
-    end
+    isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
 
-    if nargout
-        [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-    else
-        gui_mainfcn(gui_State, varargin{:});
+    if ~isOctave
+        gui_Singleton = 1;
+        gui_State = struct('gui_Name',       mfilename, ...
+                           'gui_Singleton',  gui_Singleton, ...
+                           'gui_OpeningFcn', @HysteresisGUI_OpeningFcn, ...
+                           'gui_OutputFcn',  @HysteresisGUI_OutputFcn, ...
+                           'gui_LayoutFcn',  [] , ...
+                           'gui_Callback',   []);
+        if nargin && ischar(varargin{1})
+            gui_State.gui_Callback = str2func(varargin{1});
+        end
+
+        if nargout
+            [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+        else
+            gui_mainfcn(gui_State, varargin{:});
+        end
+        return;
     end
 % End initialization code - DO NOT EDIT
+
+    % Octave does not support GUIDE/.fig files or gui_mainfcn, so the
+    % interface is rebuilt programmatically from the original .fig layout.
+    handles = buildInterface();
+    HysteresisGUI_OpeningFcn(handles.figure1, [], handles, varargin{:});
+    if nargout
+        varargout{1} = handles.figure1;
+    end
+
+
+% --- Builds the figure and all controls (Octave replacement for the .fig).
+function handles = buildInterface()
+
+    bg = get(0,'defaultUicontrolBackgroundColor');
+
+    fig = figure('Units','characters', ...
+                 'Position',[20 8 164.4 63.23], ...
+                 'Name','Preisach hysteresis model GUI', ...
+                 'NumberTitle','off', ...
+                 'MenuBar','none', ...
+                 'ToolBar','none', ...
+                 'Color',bg, ...
+                 'Tag','figure1');
+    handles.figure1 = fig;
+    handles.output = fig;
+
+    handles.axes1 = axes('Parent',fig,'Units','characters', ...
+                         'Position',[15.8 28 109 21],'Tag','axes1');
+    title(handles.axes1,'Hysteresis loop');
+    handles.axes2 = axes('Parent',fig,'Units','characters', ...
+                         'Position',[15.8 5.46 109 16],'Tag','axes2');
+    title(handles.axes2,'First derivative dY/dX');
+    xlabel(handles.axes2,'X'); ylabel(handles.axes2,'dY/dX');
+
+    handles.FileMenu = uimenu(fig,'Label','File','Tag','FileMenu');
+    handles.CloseMenuItem = uimenu(handles.FileMenu,'Label','Close', ...
+                 'Tag','CloseMenuItem', ...
+                 'Callback',@(s,e) CloseMenuItem_Callback(s,e,guidata(s)));
+
+    handles.DemagnetizeBtn = uicontrol(fig,'Style','pushbutton', ...
+                 'Units','characters','String','Reset / Demagnetize', ...
+                 'Position',[129.6 41.54 27.6 5.08],'Tag','DemagnetizeBtn', ...
+                 'Callback',@(s,e) DemagnetizeBtn_Callback(s,e,guidata(s)));
+
+    handles.freemode = uicontrol(fig,'Style','radiobutton', ...
+                 'Units','characters','String','Free looping mode', ...
+                 'Position',[129.6 37.15 23.6 1.77],'Tag','freemode', ...
+                 'Callback',@(s,e) freemode_Callback(s,e,guidata(s)));
+
+    handles.oneloop = uicontrol(fig,'Style','radiobutton', ...
+                 'Units','characters','String','One loop mode', ...
+                 'Position',[129.6 33.15 25.4 1.77],'Tag','oneloop', ...
+                 'Callback',@(s,e) oneloop_Callback(s,e,guidata(s)));
+
+    handles.flmpanel = uipanel(fig,'Units','characters', ...
+                 'Position',[15.2 56.54 134.6 5.38],'Tag','flmpanel');
+    handles.text1 = uicontrol(handles.flmpanel,'Style','text', ...
+                 'Units','characters', ...
+                 'String','Enter value between min and max on X axis:', ...
+                 'Position',[6.6 1.38 63.8 2.08], ...
+                 'HorizontalAlignment','left','Tag','text1');
+
+    handles.text2 = uicontrol(fig,'Style','text','Units','characters', ...
+                 'String','','Position',[99.6 58 40.2 2.08], ...
+                 'HorizontalAlignment','left','Tag','text2');
+    handles.edit1 = uicontrol(fig,'Style','edit','Units','characters', ...
+                 'String','','Position',[85.2 58 8.4 2.31], ...
+                 'BackgroundColor','white','Tag','edit1', ...
+                 'Callback',@(s,e) edit1_Callback(s,e,guidata(s)));
+
+    handles.olmpanel = uipanel(fig,'Units','characters', ...
+                 'Position',[15.2 50.46 134.6 5.38],'Tag','olmpanel');
+    handles.text4 = uicontrol(handles.olmpanel,'Style','text', ...
+                 'Units','characters','String','Min: ', ...
+                 'Position',[1.8 1.08 16.4 1.62], ...
+                 'HorizontalAlignment','left','Tag','text4');
+    handles.text5 = uicontrol(handles.olmpanel,'Style','text', ...
+                 'Units','characters','String','Max:', ...
+                 'Position',[39.2 1.08 10.4 1.62], ...
+                 'HorizontalAlignment','left','Tag','text5');
+    handles.min = uicontrol(handles.olmpanel,'Style','edit', ...
+                 'Units','characters','String','', ...
+                 'Position',[20.2 1 12 1.85], ...
+                 'BackgroundColor','white','Tag','min', ...
+                 'Callback',@(s,e) min_Callback(s,e,guidata(s)));
+    handles.max = uicontrol(handles.olmpanel,'Style','edit', ...
+                 'Units','characters','String','', ...
+                 'Position',[52.2 1 12 1.85], ...
+                 'BackgroundColor','white','Tag','max', ...
+                 'Callback',@(s,e) max_Callback(s,e,guidata(s)));
+
+    guidata(fig, handles);
+
 
 
 % --- Executes just before HysteresisGUI is made visible.
@@ -66,11 +164,16 @@ function HysteresisGUI_OpeningFcn(hObject, eventdata, handles, varargin)
     global workingMode;
     global Min;
     global Max;
+    global gAxes;
+    global gAxes2;
 
     N = 1000;
     Min = N/2;
     Max = N/2;
-    
+
+    gAxes = handles.axes1;
+    gAxes2 = handles.axes2;
+
     hSplash = splash('SplashScrn','png');
     
     ResetMatrix();
@@ -78,6 +181,7 @@ function HysteresisGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
     [UpperpartOfLoopX, UpperpartOfLoopY, LowerpartOfLoopX, LowerpartOfLoopY, PlotX, PlotY] = fp ('XvaluesMAX.tsv', 'YvaluesMAX.tsv', 150);
 
+    axes(handles.axes1);
     scatter(PlotX, PlotY, 2);
     set(gca, 'FontSize', 10);
 
@@ -94,6 +198,7 @@ function HysteresisGUI_OpeningFcn(hObject, eventdata, handles, varargin)
     set(handles.min,'String',sprintf('%0.3f',(((Min/N)*Xfactor)+ Xoffset)));
     set(handles.max,'String',sprintf('%0.3f',(((Max/N)*Xfactor)+ Xoffset)));
 
+    axes(handles.axes1);
     hold on
     
     splash(hSplash,'off')
@@ -163,9 +268,58 @@ function ResetPlot()
 
     global PlotX; 
     global PlotY;
+    global gAxes;
+    global gAxes2;
+    if ~isempty(gAxes) && ishghandle(gAxes)
+        axes(gAxes);
+    end
     cla reset
     scatter(PlotX, PlotY, 2);
+    title('Hysteresis loop');
     hold on;
+    if ~isempty(gAxes2) && ishghandle(gAxes2)
+        axes(gAxes2);
+        cla reset;
+        title('First derivative dY/dX');
+        xlabel('X'); ylabel('dY/dX');
+        hold on;
+    end
+
+function PlotDerivative(X, Y)
+
+    global gAxes2;
+    if isempty(gAxes2) || ~ishghandle(gAxes2)
+        return;
+    end
+    X = X(:);
+    Y = Y(:);
+    dydx = diff(Y) ./ diff(X);
+    dydx(~isfinite(dydx)) = NaN;   % ignore spikes at loop turning points
+    xd = X(1:end-1);
+    win = min(31, max(3, 2*floor(numel(dydx)/10)+1));
+    dydx = SmoothSignal(dydx, win);
+    axes(gAxes2);
+    hold on;
+    plot(xd, dydx, '-r');
+
+function ys = SmoothSignal(y, w)
+% Moving-average smoothing that ignores NaN samples.
+
+    y = y(:);
+    n = numel(y);
+    ys = y;
+    half = floor(w/2);
+    for i = 1:n
+        lo = max(1, i-half);
+        hi = min(n, i+half);
+        seg = y(lo:hi);
+        seg = seg(isfinite(seg));
+        if isempty(seg)
+            ys(i) = NaN;
+        else
+            ys(i) = mean(seg);
+        end
+    end
     
 function ResetMatrix()
 
@@ -254,7 +408,7 @@ function edit1_Callback(hObject, eventdata, handles)
        elseif (value <  Xoffset) || (value >  -Xoffset)
            errordlg('Error: Input must be in the range [Xmin:Xmax]','Input Error');
        else
-           h = waitbar(0,'Please wait. Calculating ...', 'WindowStyle', 'modal');
+           h = waitbar(0,'Please wait. Calculating ...');
            
            AppendStringValue(handles, x)
 
@@ -271,7 +425,9 @@ function edit1_Callback(hObject, eventdata, handles)
            [Xoutput2, Youtput2] = Denormalize( input, Output, Xfactor, Xoffset, Yfactor, Yoffset, N);
            
            close(h)
+           axes(handles.axes1);
            plot(Xoutput2, Youtput2, '-r');
+           PlotDerivative(Xoutput2, Youtput2);
        end
 
 
@@ -292,7 +448,7 @@ function DemagnetizeBtn_Callback(hObject, eventdata, handles)
   
     global workingMode;
     
-    h = waitbar(0,'Please wait. Calculating ...', 'WindowStyle', 'modal');
+    h = waitbar(0,'Please wait. Calculating ...');
     
     ResetMatrix();
     if (workingMode == 1)
@@ -314,7 +470,7 @@ function freemode_Callback(hObject, eventdata, handles)
     set(handles.freemode,'value',1)
     set(handles.oneloop,'value',0)
     
-    h = waitbar(0,'Please wait. Calculating...', 'WindowStyle', 'modal');  
+    h = waitbar(0,'Please wait. Calculating...');  
     
 
     workingMode = 1;
@@ -344,7 +500,7 @@ function oneloop_Callback(hObject, eventdata, handles)
     set(handles.freemode,'value',0)
     set(handles.oneloop,'value',1)
     
-    h = waitbar(0,'Please wait. Calculating ...', 'WindowStyle', 'modal');    
+    h = waitbar(0,'Please wait. Calculating ...');    
     
     workingMode = 2;
     
@@ -397,7 +553,7 @@ function min_Callback(hObject, eventdata, handles)
            if (Max < value)
                errordlg('Error: Min larger than Max','Input Error');
            else
-               h = waitbar(0,'Please wait. Calculating ...', 'WindowStyle', 'modal');
+               h = waitbar(0,'Please wait. Calculating ...');
                
                Min = value;
                
@@ -421,6 +577,7 @@ function min_Callback(hObject, eventdata, handles)
                
                ResetPlot();
                plot(Xoutput2, Youtput2, '-r');
+               PlotDerivative(Xoutput2, Youtput2);
            end
        end
 
@@ -472,7 +629,7 @@ function max_Callback(hObject, eventdata, handles)
            if (Min > value)
                errordlg('Error: Min larger than Max','Input Error');
            else
-               h = waitbar(0,'Please wait. Calculating ...', 'WindowStyle', 'modal');
+               h = waitbar(0,'Please wait. Calculating ...');
                
                Max = value;
                
@@ -495,13 +652,12 @@ function max_Callback(hObject, eventdata, handles)
                
                ResetPlot();
                plot(Xoutput2, Youtput2, '-r');
+               PlotDerivative(Xoutput2, Youtput2);
            end
        end
 
 
     end
-    
-    close(h) 
 
 
 
