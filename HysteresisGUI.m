@@ -74,7 +74,12 @@ function handles = buildInterface()
     handles.output = fig;
 
     handles.axes1 = axes('Parent',fig,'Units','characters', ...
-                         'Position',[15.8 5.46 109 43.54],'Tag','axes1');
+                         'Position',[15.8 28 109 21],'Tag','axes1');
+    title(handles.axes1,'Hysteresis loop');
+    handles.axes2 = axes('Parent',fig,'Units','characters', ...
+                         'Position',[15.8 5.46 109 16],'Tag','axes2');
+    title(handles.axes2,'First derivative dY/dX');
+    xlabel(handles.axes2,'X'); ylabel(handles.axes2,'dY/dX');
 
     handles.FileMenu = uimenu(fig,'Label','File','Tag','FileMenu');
     handles.CloseMenuItem = uimenu(handles.FileMenu,'Label','Close', ...
@@ -160,12 +165,14 @@ function HysteresisGUI_OpeningFcn(hObject, eventdata, handles, varargin)
     global Min;
     global Max;
     global gAxes;
+    global gAxes2;
 
     N = 1000;
     Min = N/2;
     Max = N/2;
 
     gAxes = handles.axes1;
+    gAxes2 = handles.axes2;
 
     hSplash = splash('SplashScrn','png');
     
@@ -262,12 +269,57 @@ function ResetPlot()
     global PlotX; 
     global PlotY;
     global gAxes;
+    global gAxes2;
     if ~isempty(gAxes) && ishghandle(gAxes)
         axes(gAxes);
     end
     cla reset
     scatter(PlotX, PlotY, 2);
+    title('Hysteresis loop');
     hold on;
+    if ~isempty(gAxes2) && ishghandle(gAxes2)
+        axes(gAxes2);
+        cla reset;
+        title('First derivative dY/dX');
+        xlabel('X'); ylabel('dY/dX');
+        hold on;
+    end
+
+function PlotDerivative(X, Y)
+
+    global gAxes2;
+    if isempty(gAxes2) || ~ishghandle(gAxes2)
+        return;
+    end
+    X = X(:);
+    Y = Y(:);
+    dydx = diff(Y) ./ diff(X);
+    dydx(~isfinite(dydx)) = NaN;   % ignore spikes at loop turning points
+    xd = X(1:end-1);
+    win = min(31, max(3, 2*floor(numel(dydx)/10)+1));
+    dydx = SmoothSignal(dydx, win);
+    axes(gAxes2);
+    hold on;
+    plot(xd, dydx, '-r');
+
+function ys = SmoothSignal(y, w)
+% Moving-average smoothing that ignores NaN samples.
+
+    y = y(:);
+    n = numel(y);
+    ys = y;
+    half = floor(w/2);
+    for i = 1:n
+        lo = max(1, i-half);
+        hi = min(n, i+half);
+        seg = y(lo:hi);
+        seg = seg(isfinite(seg));
+        if isempty(seg)
+            ys(i) = NaN;
+        else
+            ys(i) = mean(seg);
+        end
+    end
     
 function ResetMatrix()
 
@@ -375,6 +427,7 @@ function edit1_Callback(hObject, eventdata, handles)
            close(h)
            axes(handles.axes1);
            plot(Xoutput2, Youtput2, '-r');
+           PlotDerivative(Xoutput2, Youtput2);
        end
 
 
@@ -524,6 +577,7 @@ function min_Callback(hObject, eventdata, handles)
                
                ResetPlot();
                plot(Xoutput2, Youtput2, '-r');
+               PlotDerivative(Xoutput2, Youtput2);
            end
        end
 
@@ -598,13 +652,12 @@ function max_Callback(hObject, eventdata, handles)
                
                ResetPlot();
                plot(Xoutput2, Youtput2, '-r');
+               PlotDerivative(Xoutput2, Youtput2);
            end
        end
 
 
     end
-    
-    close(h) 
 
 
 
