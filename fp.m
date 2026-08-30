@@ -148,7 +148,7 @@ function [ UpperXvalues, UpperYvalues ,LowerXvalues, LowerYvalues, PlotX, PlotY]
         cnt=0;
         sumX=0;
         sumY=0;
-        for y=1 : size(up_valuesX)
+        for y=1 : length(up_valuesX)
             d = up_valuesX(y);
             if ( d >= segment_begin) && (d <= segment_end)
                 sumX= sumX+ up_valuesX(y);
@@ -187,7 +187,7 @@ function [ UpperXvalues, UpperYvalues ,LowerXvalues, LowerYvalues, PlotX, PlotY]
         cnt=0;
         sumX=0;
         sumY=0;
-        for y=1 : size(down_valuesX)
+        for y=1 : length(down_valuesX)
             d = down_valuesX(y);
             if ( d >= segment_begin) && (d <= segment_end)
                 sumX= sumX+ down_valuesX(y);
