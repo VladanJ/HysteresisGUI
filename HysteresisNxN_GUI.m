@@ -1,37 +1,67 @@
 function [ sumC, matrix ] = HysteresisNxN_GUI( x, hysteresis, matrix, mode)
 %HysteresisNxN: Hysteresis on NxN matrix
-%   Detailed explanation goes here
+%   Each input index touches at most one row and one column of the state
+%   matrix, so the flux is tracked incrementally in O(N) per step instead of
+%   recomputing the full O(N^2) sum(matrix.*hysteresis) on every step.  The
+%   state is 0/1, so it is kept as an int8 (8x smaller than double), which is
+%   far more cache-friendly for the strided row/column updates.
 
-Nsize = size(hysteresis);
+    N = size(hysteresis, 1);
+    M = numel(x);
+    sumC = zeros(1, M);
 
-N = Nsize(1);
+    DoSum = ~strcmp(mode, 'depolarizing');
 
-length = size(x);
-sumC(1:length(2)) = 0;
+    st = int8(matrix);                          % compact working copy
 
-DoSum = 1;
-if strcmp(mode,'depolarizing')
-    DoSum = 0;
-end
-
-for n=1:1:length(2),
-    if x(n)<1
-        matrix = zeros(N,N);
-    elseif x(n)<N
-        matrix(x(n),:) = 1;
-        matrix(x(n),x(n)+1:end) = 0;
-        matrix(:,x(n)+1)=0;
-    elseif x(n)==N
-        matrix(x(n),:) = 1;
-    elseif x(n)>N
-        matrix = ones(N,N);
-    end
     if DoSum
-        sumR = sum(matrix.*hysteresis);
-        sumC(n) = sum(sumR);
+        psi = sum(sum(double(st) .* hysteresis));   % running flux, updated per step
     end
-end
- 
-        
+
+    for n = 1:M
+        xn = x(n);
+        if xn < 1
+            if DoSum
+                psi = psi - sum(sum(double(st) .* hysteresis));
+            end
+            st(:) = 0;
+        elseif xn < N
+            if DoSum
+                oldrow = double(st(xn, :));
+                newrow = [ones(1, xn), zeros(1, N - xn)];
+                dRow = sum((newrow - oldrow) .* hysteresis(xn, :));
+                st(xn, :) = int8(newrow);
+                oldcol = double(st(:, xn + 1));
+                dCol = -sum(oldcol .* hysteresis(:, xn + 1));
+                st(:, xn + 1) = 0;
+                psi = psi + dRow + dCol;
+            else
+                st(xn, :) = 1;
+                st(xn, xn + 1:end) = 0;
+                st(:, xn + 1) = 0;
+            end
+        elseif xn == N
+            if DoSum
+                oldrow = double(st(N, :));
+                dRow = sum((1 - oldrow) .* hysteresis(N, :));
+                st(N, :) = 1;
+                psi = psi + dRow;
+            else
+                st(N, :) = 1;
+            end
+        else % xn > N
+            if DoSum
+                psi = psi + sum(sum((1 - double(st)) .* hysteresis));
+            end
+            st(:) = 1;
+        end
+
+        if DoSum
+            sumC(n) = psi;
+        end
+    end
+
+    matrix = double(st);
+
 end
 
